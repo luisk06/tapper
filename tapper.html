@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Tapper</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body { height: 100%; background: #050d1a; font-family: 'Segoe UI', system-ui, sans-serif; color: #fff; overflow: hidden; }
+  body { display: flex; justify-content: center; align-items: center; }
+
+  #app {
+    width: 390px;
+    height: 844px;
+    background: #050d1a;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Stars background */
+  #stars { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+  .star { position: absolute; background: #fff; border-radius: 50%; animation: twinkle 3s infinite alternate; }
+  @keyframes twinkle { 0%{opacity:0.2} 100%{opacity:0.8} }
+
+  /* Cityscape silhouette */
+  #cityscape {
+    position: absolute;
+    bottom: 80px;
+    left: 0; right: 0;
+    height: 200px;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.35;
+  }
+
+  /* TOP HUD */
+  #hud {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 12px 8px;
+    gap: 8px;
+  }
+
+  .hud-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0,180,255,0.07);
+    border: 1px solid rgba(0,200,255,0.25);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #00d4ff;
+  }
+  .hud-chip .icon {
+    width: 20px; height: 20px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .hud-chip .plus-btn {
+    width: 20px; height: 20px;
+    border: 1px solid rgba(0,200,255,0.4);
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    color: #00d4ff;
+  }
+
+  #level-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 auto;
+  }
+  #level-label { font-size: 10px; letter-spacing: 0.12em; color: #00d4ff; opacity: 0.7; font-weight: 600; }
+  #level-num { font-size: 28px; font-weight: 700; color: #fff; line-height: 1; }
+  #level-bar-wrap { width: 60px; height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; }
+  #level-bar { height: 3px; background: #00d4ff; border-radius: 2px; transition: width 0.4s; }
+
+  .gear-btn {
+    width: 32px; height: 32px;
+    border: 1px solid rgba(0,200,255,0.3);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 16px;
+    background: rgba(0,180,255,0.07);
+    color: #00d4ff;
+  }
+
+  /* MAIN AREA */
+  #main {
+    position: relative;
+    z-index: 5;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding-top: 20px;
+  }
+
+  #taps-label { font-size: 11px; letter-spacing: 0.15em; color: #00d4ff; opacity: 0.6; font-weight: 600; margin-bottom: 4px; }
+  #total-taps { font-size: 60px; font-weight: 700; color: #fff; letter-spacing: -1px; line-height: 1; transition: transform 0.05s; }
+  #total-taps.pop { transform: scale(1.06); }
+  #per-tap-row { margin-top: 6px; text-align: center; }
+  #per-tap-val { font-size: 22px; font-weight: 700; color: #00d4ff; }
+  #per-tap-lbl { font-size: 11px; color: rgba(0,212,255,0.5); letter-spacing: 0.1em; font-weight: 600; }
+
+  /* TAP BUTTON */
+  #btn-wrap {
+    position: relative;
+    margin-top: 28px;
+    width: 220px; height: 220px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Outer ring pulses */
+  .ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid rgba(0,212,255,0.15);
+    animation: ringPulse 2.5s infinite;
+    pointer-events: none;
+  }
+  .ring1 { width: 220px; height: 220px; animation-delay: 0s; }
+  .ring2 { width: 250px; height: 250px; animation-delay: 0.6s; }
+  .ring3 { width: 280px; height: 280px; animation-delay: 1.2s; }
+  @keyframes ringPulse {
+    0%   { opacity: 0.5; transform: scale(0.95); }
+    50%  { opacity: 0.2; transform: scale(1.02); }
+    100% { opacity: 0.5; transform: scale(0.95); }
+  }
+
+  /* Danger rings */
+  .ring-danger {
+    border-color: rgba(226,75,74,0.3) !important;
+  }
+  @keyframes ringDanger {
+    0%   { opacity: 0.7; transform: scale(0.95); }
+    50%  { opacity: 0.2; transform: scale(1.05); }
+    100% { opacity: 0.7; transform: scale(0.95); }
+  }
+
+  #tap-btn {
+    width: 170px; height: 170px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    z-index: 2;
+    transition: transform 0.07s ease, background 0.2s;
+    outline: none;
+  }
+  #tap-btn.safe {
+    background: radial-gradient(circle at 38% 35%, #00c8ff 0%, #0076cc 55%, #003f7a 100%);
+    box-shadow: 0 0 40px rgba(0,180,255,0.6), 0 0 80px rgba(0,150,255,0.2);
+  }
+  #tap-btn.danger {
+    background: radial-gradient(circle at 38% 35%, #ff6b6b 0%, #cc2200 55%, #7a0000 100%);
+    box-shadow: 0 0 40px rgba(255,80,80,0.6), 0 0 80px rgba(200,0,0,0.2);
+  }
+  #tap-btn:active { transform: scale(0.91); }
+  #tap-btn.bounce { animation: btnBounce 0.15s ease forwards; }
+  @keyframes btnBounce { 0%{transform:scale(0.91)} 70%{transform:scale(1.04)} 100%{transform:scale(1)} }
+
+  #btn-text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  #btn-text .main-label {
+    font-size: 28px; font-weight: 800; letter-spacing: 0.08em;
+    color: #fff;
+    text-shadow: 0 0 12px rgba(255,255,255,0.6);
+  }
+  #btn-text .sub-label {
+    font-size: 11px; color: rgba(255,255,255,0.7); letter-spacing: 0.1em; font-weight: 600;
+  }
+
+  /* Instruction banner */
+  #instruction {
+    margin-top: 20px;
+    width: 80%;
+    text-align: center;
+    background: rgba(0,180,255,0.08);
+    border: 1px solid rgba(0,180,255,0.2);
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-size: 13px;
+    color: rgba(0,212,255,0.8);
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    line-height: 1.4;
+    transition: background 0.3s, border-color 0.3s, color 0.3s;
+  }
+  #instruction.danger-msg {
+    background: rgba(200,0,0,0.12);
+    border-color: rgba(220,80,80,0.35);
+    color: #ff8080;
+  }
+
+  /* Float scores */
+  .float-pt {
+    position: absolute;
+    font-size: 20px;
+    font-weight: 700;
+    pointer-events: none;
+    color: #00d4ff;
+    text-shadow: 0 0 8px rgba(0,212,255,0.8);
+    animation: floatUp 0.9s ease forwards;
+    z-index: 20;
+  }
+  .float-pt.neg { color: #ff5050; text-shadow: 0 0 8px rgba(255,80,80,0.8); }
+  @keyframes floatUp { 0%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-70px)} }
+
+  /* Streak + multiplier row */
+  #streak-row {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 20px;
+    margin-top: 8px;
+  }
+  #streak-track { flex: 1; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+  #streak-fill { height: 4px; background: #00d4ff; border-radius: 2px; width: 0%; transition: width 0.2s, background 0.3s; }
+  #streak-info { font-size: 12px; color: rgba(0,212,255,0.7); font-weight: 600; white-space: nowrap; }
+  #mult-badge {
+    font-size: 12px; font-weight: 700; padding: 2px 8px;
+    border: 1px solid rgba(0,200,255,0.4);
+    border-radius: 12px;
+    color: #00d4ff;
+    background: rgba(0,180,255,0.1);
+    white-space: nowrap;
+    transition: all 0.3s;
+  }
+  #mult-badge.hot { border-color: rgba(255,150,0,0.6); color: #ffb040; background: rgba(200,100,0,0.15); }
+
+  /* Combo flash */
+  #combo { position: absolute; top: 0; left: 50%; transform: translateX(-50%); font-size: 14px; font-weight: 700; color: #ffb040; text-shadow: 0 0 8px rgba(255,180,0,0.7); white-space: nowrap; opacity: 0; pointer-events: none; z-index: 20; transition: opacity 0.15s; }
+  #combo.show { opacity: 1; }
+
+  /* BADGES */
+  #badges-section {
+    position: relative; z-index: 10;
+    padding: 8px 14px 0;
+    display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
+  }
+  .badge {
+    font-size: 10px; font-weight: 700; padding: 3px 9px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 0.04em;
+    transition: all 0.3s;
+  }
+  .badge.earned {
+    border-color: rgba(0,200,255,0.5);
+    background: rgba(0,180,255,0.12);
+    color: #00d4ff;
+  }
+  .badge.pop { animation: badgePop 0.4s ease; }
+  @keyframes badgePop { 0%{transform:scale(0.6);opacity:0} 70%{transform:scale(1.2)} 100%{transform:scale(1)} }
+
+  /* BOTTOM NAV */
+  #bottom-nav {
+    position: relative; z-index: 10;
+    display: flex;
+    border-top: 1px solid rgba(0,200,255,0.12);
+    background: rgba(5,13,26,0.95);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .nav-item {
+    flex: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 10px 0 8px;
+    cursor: pointer;
+    position: relative;
+    font-size: 10px; letter-spacing: 0.08em; font-weight: 700;
+    color: rgba(0,200,255,0.35);
+    gap: 4px;
+    transition: color 0.2s;
+  }
+  .nav-item.active { color: #00d4ff; }
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 20%; right: 20%;
+    height: 2px;
+    background: #00d4ff;
+    border-radius: 0 0 3px 3px;
+    box-shadow: 0 0 8px rgba(0,212,255,0.8);
+  }
+  .nav-icon {
+    width: 22px; height: 22px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* SCREENS */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* STATS PANEL (replaces main when active) */
+  #stats-panel {
+    position: absolute;
+    inset: 0;
+    background: #050d1a;
+    z-index: 50;
+    overflow-y: auto;
+    padding: 20px 16px;
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+  }
+  #stats-panel.open { display: flex; }
+  .stats-title { font-size: 13px; letter-spacing: 0.12em; color: #00d4ff; opacity: 0.6; font-weight: 700; margin-bottom: 4px; }
+  .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(0,180,255,0.06); border: 1px solid rgba(0,200,255,0.12); border-radius: 10px; }
+  .stat-row .s-label { font-size: 13px; color: rgba(255,255,255,0.6); }
+  .stat-row .s-val { font-size: 15px; font-weight: 700; color: #00d4ff; }
+
+  /* MISSIONS PANEL */
+  #missions-panel {
+    position: absolute; inset: 0;
+    background: #050d1a;
+    z-index: 50; overflow-y: auto;
+    padding: 20px 16px;
+    display: none; flex-direction: column; gap: 10px;
+  }
+  #missions-panel.open { display: flex; }
+  .mission-card {
+    background: rgba(0,180,255,0.06);
+    border: 1px solid rgba(0,200,255,0.15);
+    border-radius: 12px;
+    padding: 12px 14px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .mission-card.done { border-color: rgba(0,200,100,0.3); background: rgba(0,150,80,0.07); }
+  .m-top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .m-name { font-size: 14px; font-weight: 700; color: #fff; }
+  .m-reward { font-size: 12px; color: #ffb040; font-weight: 700; }
+  .m-desc { font-size: 12px; color: rgba(255,255,255,0.45); }
+  .m-bar-wrap { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; }
+  .m-bar { height: 3px; background: #00d4ff; border-radius: 2px; transition: width 0.4s; }
+  .m-bar.done { background: #00c864; }
+  .m-pct { font-size: 11px; color: rgba(0,212,255,0.5); text-align: right; }
+
+  /* GAME OVER overlay */
+  #gameover {
+    position: absolute; inset: 0;
+    background: rgba(5,13,26,0.93);
+    z-index: 80;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 24px;
+  }
+  #gameover.show { display: flex; }
+  #go-title { font-size: 26px; font-weight: 800; color: #fff; }
+  #go-subtitle { font-size: 13px; color: rgba(0,212,255,0.6); }
+  .go-row { display: flex; justify-content: space-between; width: 100%; max-width: 280px; padding: 8px 14px; background: rgba(0,180,255,0.07); border: 1px solid rgba(0,200,255,0.15); border-radius: 10px; }
+  .go-row .gl { font-size: 13px; color: rgba(255,255,255,0.5); }
+  .go-row .gv { font-size: 14px; font-weight: 700; color: #00d4ff; }
+  #go-rank-line { font-size: 14px; font-weight: 700; color: #ffb040; }
+  #play-again {
+    margin-top: 8px;
+    padding: 14px 40px;
+    border-radius: 40px;
+    background: linear-gradient(135deg, #0098d4, #004fa3);
+    border: 1px solid rgba(0,200,255,0.4);
+    color: #fff; font-size: 16px; font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 0 20px rgba(0,150,255,0.4);
+  }
+
+  /* START overlay */
+  #start-overlay {
+    position: absolute; inset: 0;
+    background: rgba(5,13,26,0.96);
+    z-index: 80;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 32px;
+  }
+  #start-overlay h1 { font-size: 40px; font-weight: 800; color: #fff; letter-spacing: 0.05em; text-shadow: 0 0 20px rgba(0,200,255,0.5); }
+  #start-overlay p { font-size: 14px; color: rgba(0,212,255,0.7); text-align: center; line-height: 1.6; max-width: 280px; }
+  #start-btn {
+    margin-top: 12px;
+    padding: 15px 44px;
+    border-radius: 40px;
+    background: linear-gradient(135deg, #0098d4, #004fa3);
+    border: 1px solid rgba(0,200,255,0.5);
+    color: #fff; font-size: 17px; font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 0 30px rgba(0,150,255,0.5);
+    letter-spacing: 0.05em;
+  }
+  .rules-list { font-size: 13px; color: rgba(0,212,255,0.6); line-height: 1.8; list-style: none; }
+  .rules-list li::before { content: '▸ '; color: #00d4ff; }
+
+  /* LEADERBOARD */
+  #lb-section { position: relative; z-index: 10; padding: 6px 14px 0; }
+  .lb-title { font-size: 10px; letter-spacing: 0.1em; font-weight: 700; color: rgba(0,212,255,0.4); margin-bottom: 5px; }
+  #lb-rows { display: flex; flex-direction: column; gap: 3px; }
+  .lb-row { display: flex; align-items: center; gap: 8px; padding: 5px 10px; border-radius: 7px; font-size: 12px; }
+  .lb-row.you { background: rgba(0,180,255,0.1); border: 1px solid rgba(0,200,255,0.2); }
+  .lb-rank { width: 20px; color: rgba(0,212,255,0.5); font-weight: 700; font-size: 11px; }
+  .lb-name { flex: 1; color: rgba(255,255,255,0.7); }
+  .lb-name.you { color: #00d4ff; }
+  .lb-score { font-weight: 700; color: rgba(255,255,255,0.8); }
+  .lb-score.you { color: #00d4ff; }
+
+  /* Countdown */
+  #countdown-overlay {
+    position: absolute; inset: 0; z-index: 70;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(5,13,26,0.7);
+    font-size: 80px; font-weight: 800; color: #fff;
+    text-shadow: 0 0 30px rgba(0,200,255,0.8);
+  }
+  #countdown-overlay.show { display: flex; }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Stars -->
+  <div id="stars"></div>
+
+  <!-- Cityscape SVG -->
+  <svg id="cityscape" viewBox="0 0 390 200" preserveAspectRatio="none">
+    <defs>
+      <linearGradient id="cityGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#0a2a4a"/>
+        <stop offset="100%" stop-color="#050d1a"/>
+      </linearGradient>
+    </defs>
+    <rect width="390" height="200" fill="url(#cityGrad)"/>
+    <!-- Buildings -->
+    <rect x="0" y="120" width="20" height="80" fill="#0a1f35"/>
+    <rect x="8" y="100" width="12" height="100" fill="#0d2540"/>
+    <rect x="22" y="60" width="18" height="140" fill="#0a1f35"/>
+    <rect x="28" y="40" width="8" height="160" fill="#0d2540"/>
+    <rect x="42" y="90" width="22" height="110" fill="#0a1f35"/>
+    <rect x="50" y="70" width="10" height="130" fill="#071828"/>
+    <rect x="66" y="80" width="25" height="120" fill="#0a1f35"/>
+    <rect x="73" y="55" width="11" height="145" fill="#0d2540"/>
+    <rect x="94" y="100" width="18" height="100" fill="#071828"/>
+    <rect x="100" y="65" width="8" height="135" fill="#0a1f35"/>
+    <rect x="115" y="85" width="28" height="115" fill="#0d2540"/>
+    <rect x="122" y="50" width="14" height="150" fill="#0a1f35"/>
+    <rect x="148" y="95" width="20" height="105" fill="#071828"/>
+    <rect x="155" y="70" width="9" height="130" fill="#0d2540"/>
+    <rect x="172" y="80" width="22" height="120" fill="#0a1f35"/>
+    <rect x="178" y="45" width="10" height="155" fill="#071828"/>
+    <rect x="200" y="90" width="26" height="110" fill="#0d2540"/>
+    <rect x="210" y="60" width="12" height="140" fill="#0a1f35"/>
+    <rect x="235" y="75" width="20" height="125" fill="#071828"/>
+    <rect x="243" y="40" width="9" height="160" fill="#0d2540"/>
+    <rect x="258" y="95" width="24" height="105" fill="#0a1f35"/>
+    <rect x="265" y="65" width="11" height="135" fill="#071828"/>
+    <rect x="285" y="85" width="20" height="115" fill="#0d2540"/>
+    <rect x="292" y="55" width="8" height="145" fill="#0a1f35"/>
+    <rect x="308" y="100" width="22" height="100" fill="#071828"/>
+    <rect x="315" y="70" width="10" height="130" fill="#0d2540"/>
+    <rect x="332" y="80" width="26" height="120" fill="#0a1f35"/>
+    <rect x="342" y="50" width="12" height="150" fill="#071828"/>
+    <rect x="360" y="90" width="18" height="110" fill="#0d2540"/>
+    <rect x="368" y="65" width="8" height="135" fill="#0a1f35"/>
+    <!-- Window lights (tiny dots) -->
+    <rect x="29" y="55" width="2" height="2" fill="#00d4ff" opacity="0.6"/>
+    <rect x="29" y="62" width="2" height="2" fill="#00d4ff" opacity="0.4"/>
+    <rect x="74" y="60" width="2" height="2" fill="#7f77dd" opacity="0.7"/>
+    <rect x="74" y="68" width="2" height="2" fill="#00d4ff" opacity="0.4"/>
+    <rect x="123" y="58" width="2" height="2" fill="#00d4ff" opacity="0.6"/>
+    <rect x="179" y="52" width="2" height="2" fill="#7f77dd" opacity="0.5"/>
+    <rect x="179" y="60" width="2" height="2" fill="#00d4ff" opacity="0.4"/>
+    <rect x="211" y="68" width="2" height="2" fill="#00d4ff" opacity="0.6"/>
+    <rect x="244" y="48" width="2" height="2" fill="#7f77dd" opacity="0.7"/>
+    <rect x="266" y="72" width="2" height="2" fill="#00d4ff" opacity="0.5"/>
+    <rect x="293" y="62" width="2" height="2" fill="#00d4ff" opacity="0.6"/>
+    <rect x="343" y="56" width="2" height="2" fill="#7f77dd" opacity="0.5"/>
+    <rect x="369" y="70" width="2" height="2" fill="#00d4ff" opacity="0.4"/>
+  </svg>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-chip">
+      <div class="icon" style="color:#378ADD; font-size:16px;">&#9670;</div>
+      <div style="display:flex;flex-direction:column;gap:1px;">
+        <span style="font-size:9px;opacity:0.6;letter-spacing:0.08em;font-weight:600;">CREDITS</span>
+        <span id="credits-val">0</span>
+      </div>
+      <div class="plus-btn" id="credits-plus">+</div>
+    </div>
+
+    <div id="level-chip">
+      <span id="level-label">LEVEL</span>
+      <span id="level-num">1</span>
+      <div id="level-bar-wrap"><div id="level-bar" style="width:0%"></div></div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:6px;">
+      <div class="hud-chip">
+        <div class="icon" style="color:#7F77DD;font-size:16px;">&#9670;</div>
+        <div style="display:flex;flex-direction:column;gap:1px;">
+          <span style="font-size:9px;opacity:0.6;letter-spacing:0.08em;font-weight:600;">ENERGY</span>
+          <span id="energy-val">10/10</span>
+        </div>
+        <div class="plus-btn">+</div>
+      </div>
+      <div class="gear-btn" id="gear-btn">&#9881;</div>
+    </div>
+  </div>
+
+  <!-- MAIN GAME -->
+  <div id="main">
+    <div id="taps-label">TOTAL TAPS</div>
+    <div id="total-taps">0</div>
+    <div id="per-tap-row">
+      <div id="per-tap-val">+1</div>
+      <div id="per-tap-lbl">PER TAP</div>
+    </div>
+
+    <div id="btn-wrap">
+      <div class="ring ring1" id="ring1"></div>
+      <div class="ring ring2" id="ring2"></div>
+      <div class="ring ring3" id="ring3"></div>
+      <div id="combo"></div>
+      <button id="tap-btn" class="safe">
+        <div id="btn-text">
+          <span class="main-label" id="btn-main-lbl">TAP</span>
+          <span class="sub-label" id="btn-sub-lbl">TOUCH TO SCORE</span>
+        </div>
+      </button>
+    </div>
+
+    <div id="instruction">TAP THE BUTTON<br>TO EARN POINTS</div>
+  </div>
+
+  <!-- Streak row -->
+  <div id="streak-row">
+    <span id="streak-info">Streak: 0</span>
+    <div id="streak-track"><div id="streak-fill"></div></div>
+    <span id="mult-badge">x1</span>
+  </div>
+
+  <!-- Badges -->
+  <div id="badges-section">
+    <span class="badge" id="badge-first">1st Tap</span>
+    <span class="badge" id="badge-s5">Streak 5</span>
+    <span class="badge" id="badge-s15">Streak 15</span>
+    <span class="badge" id="badge-s30">Streak 30</span>
+    <span class="badge" id="badge-100">100 pts</span>
+    <span class="badge" id="badge-500">500 pts</span>
+    <span class="badge" id="badge-reflex">Reflex</span>
+    <span class="badge" id="badge-survivor">Survivor</span>
+  </div>
+
+  <!-- Leaderboard -->
+  <div id="lb-section">
+    <div class="lb-title">LEADERBOARD</div>
+    <div id="lb-rows"></div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div id="bottom-nav">
+    <div class="nav-item" id="nav-missions" onclick="showPanel('missions')">
+      <div class="nav-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/>
+        </svg>
+      </div>
+      MISSIONS
+    </div>
+    <div class="nav-item" id="nav-shop" onclick="showPanel('shop')">
+      <div class="nav-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>
+        </svg>
+      </div>
+      SHOP
+    </div>
+    <div class="nav-item active" id="nav-home" onclick="showPanel('home')">
+      <div class="nav-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+      </div>
+      HOME
+    </div>
+    <div class="nav-item" id="nav-stats" onclick="showPanel('stats')">
+      <div class="nav-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="2" y="14" width="4" height="8"/><rect x="9" y="9" width="4" height="13"/><rect x="16" y="4" width="4" height="18"/>
+        </svg>
+      </div>
+      STATS
+    </div>
+  </div>
+
+  <!-- STATS PANEL -->
+  <div id="stats-panel">
+    <div class="stats-title">YOUR STATS</div>
+    <div class="stat-row"><span class="s-label">Total taps</span><span class="s-val" id="st-taps">0</span></div>
+    <div class="stat-row"><span class="s-label">Best score (session)</span><span class="s-val" id="st-best">0</span></div>
+    <div class="stat-row"><span class="s-label">Best streak</span><span class="s-val" id="st-streak">0</span></div>
+    <div class="stat-row"><span class="s-label">Games played</span><span class="s-val" id="st-games">0</span></div>
+    <div class="stat-row"><span class="s-label">Credits earned</span><span class="s-val" id="st-credits">0</span></div>
+    <div class="stat-row"><span class="s-label">Level</span><span class="s-val" id="st-level">1</span></div>
+    <div class="stat-row"><span class="s-label">Per tap</span><span class="s-val" id="st-pertap">+1</span></div>
+    <button onclick="showPanel('home')" style="margin-top:8px;padding:12px;border-radius:10px;background:rgba(0,180,255,0.1);border:1px solid rgba(0,200,255,0.2);color:#00d4ff;font-size:14px;font-weight:700;cursor:pointer;">Back</button>
+  </div>
+
+  <!-- MISSIONS PANEL -->
+  <div id="missions-panel">
+    <div class="stats-title">MISSIONS</div>
+    <div id="missions-list"></div>
+    <button onclick="showPanel('home')" style="margin-top:8px;padding:12px;border-radius:10px;background:rgba(0,180,255,0.1);border:1px solid rgba(0,200,255,0.2);color:#00d4ff;font-size:14px;font-weight:700;cursor:pointer;">Back</button>
+  </div>
+
+  <!-- GAME OVER -->
+  <div id="gameover">
+    <div id="go-title">TIME'S UP!</div>
+    <div id="go-subtitle">Session complete</div>
+    <div class="go-row"><span class="gl">Score</span><span class="gv" id="go-score">0</span></div>
+    <div class="go-row"><span class="gl">Best streak</span><span class="gv" id="go-str">0</span></div>
+    <div class="go-row"><span class="gl">Multiplier reached</span><span class="gv" id="go-mult">x1</span></div>
+    <div id="go-rank-line"></div>
+    <button id="play-again">PLAY AGAIN</button>
+  </div>
+
+  <!-- START -->
+  <div id="start-overlay">
+    <h1>TAPPER</h1>
+    <ul class="rules-list">
+      <li>Tap GREEN to earn points</li>
+      <li>Avoid RED — it costs you</li>
+      <li>Build streaks for multipliers</li>
+      <li>Survive 60 seconds</li>
+    </ul>
+    <button id="start-btn">START</button>
+  </div>
+
+  <!-- COUNTDOWN -->
+  <div id="countdown-overlay"></div>
+</div>
+
+<script>
+const SAVE_KEY = 'tapper_v2';
+const GAME_DUR = 60;
+const STREAK_THRESHOLDS = [5,10,15,20,30];
+const MULTIPLIERS_MAP   = [2, 3,  4,  5,  6];
+
+const fakeNames = ['Alex','Jordan','Sam','Morgan','Taylor','Casey','Riley','Drew','Avery','Quinn','Blake','Jamie'];
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return {
+    totalTaps: 0,
+    bestScore: 0,
+    bestStreak: 0,
+    gamesPlayed: 0,
+    credits: 0,
+    level: 1,
+    xp: 0,
+    perTap: 1,
+    badges: [],
+    leaderboard: fakeNames.map((n,i) => ({ name: n, score: Math.floor(280 - i*18 + Math.random()*20) })),
+    missions: initMissions(),
+  };
+}
+
+function initMissions() {
+  return [
+    { id:'m1', name:'First Steps', desc:'Earn 100 points in a session', reward:50, target:100, progress:0, type:'score', done:false },
+    { id:'m2', name:'Streak Starter', desc:'Reach a 5-tap streak', reward:30, target:5, progress:0, type:'streak', done:false },
+    { id:'m3', name:'Centurion', desc:'Make 100 total taps', reward:80, target:100, progress:0, type:'taps', done:false },
+    { id:'m4', name:'Speedster', desc:'Reach a 15-tap streak', reward:120, target:15, progress:0, type:'streak', done:false },
+    { id:'m5', name:'Marathon', desc:'Make 500 total taps', reward:200, target:500, progress:0, type:'taps', done:false },
+    { id:'m6', name:'High Roller', desc:'Earn 500 points in a session', reward:150, target:500, progress:0, type:'score', done:false },
+  ];
+}
+
+function saveData() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(gs)); } catch(e) {} }
+
+let gs = loadData();
+if (!gs.missions) gs.missions = initMissions();
+
+let score = 0, streak = 0, sessionBestStreak = 0, multiplier = 1;
+let timeLeft = GAME_DUR, gameRunning = false;
+let btnDanger = false, switchTimer = null, gameTimer = null;
+let badgesEarned = new Set(gs.badges);
+let lastTapTime = 0;
+
+const $ = id => document.getElementById(id);
+const tapBtn = $('tap-btn');
+const totalTapsEl = $('total-taps');
+const creditsEl = $('credits-val');
+const energyEl = $('energy-val');
+const levelNumEl = $('level-num');
+const levelBarEl = $('level-bar');
+const streakInfo = $('streak-info');
+const streakFill = $('streak-fill');
+const multBadge = $('mult-badge');
+const instruction = $('instruction');
+const comboEl = $('combo');
+const perTapValEl = $('per-tap-val');
+const ring1 = $('ring1'), ring2 = $('ring2'), ring3 = $('ring3');
+
+function xpForLevel(lvl) { return lvl * 100; }
+
+function addXP(amt) {
+  gs.xp += amt;
+  while (gs.xp >= xpForLevel(gs.level)) {
+    gs.xp -= xpForLevel(gs.level);
+    gs.level++;
+    gs.perTap = Math.min(gs.perTap + 1, 6);
+    showFloatAt('+LEVEL UP!', 195, 180, false, true);
+  }
+  const pct = Math.min((gs.xp / xpForLevel(gs.level)) * 100, 100);
+  levelNumEl.textContent = gs.level;
+  levelBarEl.style.width = pct + '%';
+  perTapValEl.textContent = '+' + gs.perTap;
+}
+
+function renderHUD() {
+  creditsEl.textContent = gs.credits.toLocaleString();
+  energyEl.textContent = '10/10';
+  levelNumEl.textContent = gs.level;
+  const pct = Math.min((gs.xp / xpForLevel(gs.level)) * 100, 100);
+  levelBarEl.style.width = pct + '%';
+  perTapValEl.textContent = '+' + gs.perTap;
+  totalTapsEl.textContent = gs.totalTaps.toLocaleString();
+}
+
+function showFloatAt(txt, x, y, neg, gold) {
+  const el = document.createElement('div');
+  el.className = 'float-pt' + (neg ? ' neg' : '');
+  if (gold) el.style.color = '#ffb040';
+  el.textContent = txt;
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  el.style.position = 'absolute';
+  $('main').appendChild(el);
+  setTimeout(() => el.remove(), 950);
+}
+
+function showFloat(txt, neg, gold) {
+  showFloatAt(txt, 150 + Math.random()*60 - 30, 200 + Math.random()*20 - 10, neg, gold);
+}
+
+function updateMultiplier() {
+  let m = 1;
+  for (let i = 0; i < STREAK_THRESHOLDS.length; i++) {
+    if (streak >= STREAK_THRESHOLDS[i]) m = MULTIPLIERS_MAP[i];
+  }
+  multiplier = m;
+  multBadge.textContent = 'x' + m;
+  multBadge.classList.toggle('hot', m > 2);
+  const pct = Math.min((streak / 30) * 100, 100);
+  streakFill.style.width = pct + '%';
+  streakFill.style.background = m >= 4 ? '#ffb040' : m >= 2 ? '#00c864' : '#00d4ff';
+  streakInfo.textContent = 'Streak: ' + streak;
+}
+
+function flashCombo(msg) {
+  comboEl.textContent = msg;
+  comboEl.classList.add('show');
+  clearTimeout(comboEl._t);
+  comboEl._t = setTimeout(() => comboEl.classList.remove('show'), 900);
+}
+
+function earnBadge(id, label) {
+  if (badgesEarned.has(id)) return;
+  badgesEarned.add(id);
+  gs.badges = [...badgesEarned];
+  const el = $('badge-' + id);
+  if (el) { el.classList.add('earned','pop'); setTimeout(() => el.classList.remove('pop'), 450); }
+  saveData();
+}
+
+function checkBadges() {
+  if (gs.totalTaps >= 1) earnBadge('first', '1st Tap');
+  if (streak >= 5)  earnBadge('s5', 'Streak 5');
+  if (streak >= 15) earnBadge('s15', 'Streak 15');
+  if (streak >= 30) earnBadge('s30', 'Streak 30');
+  if (score >= 100) earnBadge('100', '100 pts');
+  if (score >= 500) earnBadge('500', '500 pts');
+  if (Date.now() - lastTapTime < 280 && streak > 1) earnBadge('reflex', 'Reflex');
+}
+
+function renderLeaderboard() {
+  const you = { name: 'You', score, you: true };
+  const combined = [...gs.leaderboard, you].sort((a,b) => b.score - a.score).slice(0,5);
+  $('lb-rows').innerHTML = combined.map((e,i) => `
+    <div class="lb-row ${e.you?'you':''}">
+      <span class="lb-rank">#${i+1}</span>
+      <span class="lb-name ${e.you?'you':''}">${e.you?'You':e.name}</span>
+      <span class="lb-score ${e.you?'you':''}">${Math.round(e.score).toLocaleString()}</span>
+    </div>`).join('');
+}
+
+function updateMissions() {
+  gs.missions.forEach(m => {
+    if (m.done) return;
+    if (m.type === 'score') m.progress = Math.max(m.progress, score);
+    if (m.type === 'streak') m.progress = Math.max(m.progress, streak);
+    if (m.type === 'taps') m.progress = gs.totalTaps;
+    if (m.progress >= m.target && !m.done) {
+      m.done = true;
+      gs.credits += m.reward;
+      showFloat('+' + m.reward + ' credits!', false, true);
+    }
+  });
+}
+
+function renderMissions() {
+  $('missions-list').innerHTML = gs.missions.map(m => {
+    const pct = Math.min((m.progress / m.target) * 100, 100);
+    return `<div class="mission-card ${m.done?'done':''}">
+      <div class="m-top"><span class="m-name">${m.name}</span><span class="m-reward">+${m.reward} credits</span></div>
+      <div class="m-desc">${m.desc}</div>
+      <div class="m-bar-wrap"><div class="m-bar ${m.done?'done':''}" style="width:${pct}%"></div></div>
+      <div class="m-pct">${m.done ? 'Complete!' : Math.round(m.progress) + ' / ' + m.target}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderStats() {
+  $('st-taps').textContent = gs.totalTaps.toLocaleString();
+  $('st-best').textContent = gs.bestScore.toLocaleString();
+  $('st-streak').textContent = gs.bestStreak;
+  $('st-games').textContent = gs.gamesPlayed;
+  $('st-credits').textContent = gs.credits.toLocaleString();
+  $('st-level').textContent = gs.level;
+  $('st-pertap').textContent = '+' + gs.perTap;
+}
+
+function getLevel() {
+  if (score < 100) return 1;
+  if (score < 250) return 2;
+  if (score < 450) return 3;
+  if (score < 700) return 4;
+  return 5;
+}
+function getSafeDur()   { const l = getLevel(); return Math.max(700, 2200 - l*300 + Math.random()*400); }
+function getDangerDur() { const l = getLevel(); return Math.max(500, 1800 - l*260 + Math.random()*350); }
+
+function setDanger(on) {
+  btnDanger = on;
+  if (on) {
+    tapBtn.className = 'danger';
+    $('btn-main-lbl').textContent = 'STOP!';
+    $('btn-sub-lbl').textContent = 'DON\'T TAP NOW';
+    instruction.textContent = 'WAIT FOR GREEN!';
+    instruction.classList.add('danger-msg');
+    [ring1,ring2,ring3].forEach(r => { r.classList.add('ring-danger'); r.style.animationName = 'ringDanger'; });
+  } else {
+    tapBtn.className = 'safe bounce';
+    $('btn-main-lbl').textContent = 'TAP';
+    $('btn-sub-lbl').textContent = 'TOUCH TO SCORE';
+    instruction.textContent = 'TAP THE BUTTON TO EARN POINTS';
+    instruction.classList.remove('danger-msg');
+    [ring1,ring2,ring3].forEach(r => { r.classList.remove('ring-danger'); r.style.animationName = 'ringPulse'; });
+    setTimeout(() => tapBtn.classList.remove('bounce'), 180);
+  }
+}
+
+function scheduleSwitch() {
+  if (!gameRunning) return;
+  switchTimer = setTimeout(() => {
+    if (!gameRunning) return;
+    setDanger(true);
+    switchTimer = setTimeout(() => {
+      if (!gameRunning) return;
+      setDanger(false);
+      scheduleSwitch();
+    }, getDangerDur());
+  }, getSafeDur());
+}
+
+function handleTap(e) {
+  if (!gameRunning) return;
+  e.preventDefault();
+
+  const now = Date.now();
+  if (btnDanger) {
+    const penalty = multiplier * 5;
+    score = Math.max(0, score - penalty);
+    streak = 0;
+    updateMultiplier();
+    showFloat('-' + penalty, true, false);
+    tapBtn.style.filter = 'brightness(1.5)';
+    setTimeout(() => tapBtn.style.filter = '', 120);
+  } else {
+    const pts = gs.perTap * multiplier * (1 + Math.floor(getLevel() * 0.5));
+    score += pts;
+    gs.totalTaps++;
+    streak++;
+    if (streak > sessionBestStreak) sessionBestStreak = streak;
+    if (streak > gs.bestStreak) gs.bestStreak = streak;
+    if (score > gs.bestScore) gs.bestScore = score;
+    addXP(pts);
+    updateMultiplier();
+    showFloat('+' + pts, false, false);
+    if (streak === 5)  flashCombo('STREAK x2!');
+    if (streak === 10) flashCombo('STREAK x3! ');
+    if (streak === 15) flashCombo('x4 ON FIRE!');
+    if (streak === 20) flashCombo('UNSTOPPABLE x5!');
+    if (streak === 30) flashCombo('LEGEND x6!!!');
+    else if (streak > 5 && streak % 5 === 0) flashCombo(streak + ' in a row!');
+    tapBtn.classList.add('bounce');
+    setTimeout(() => tapBtn.classList.remove('bounce'), 150);
+    totalTapsEl.textContent = gs.totalTaps.toLocaleString();
+    totalTapsEl.classList.add('pop');
+    setTimeout(() => totalTapsEl.classList.remove('pop'), 80);
+    if (now - lastTapTime < 280) earnBadge('reflex', 'Reflex');
+    lastTapTime = now;
+    checkBadges();
+    updateMissions();
+  }
+  renderLeaderboard();
+  renderHUD();
+}
+
+function endGame() {
+  gameRunning = false;
+  clearTimeout(switchTimer);
+  clearInterval(gameTimer);
+  gs.gamesPlayed++;
+  earnBadge('survivor', 'Survivor');
+  const combined = [...gs.leaderboard, {name:'You', score}].sort((a,b)=>b.score-a.score);
+  const rank = combined.findIndex(e=>e.name==='You') + 1;
+  $('go-score').textContent = Math.round(score).toLocaleString();
+  $('go-str').textContent = sessionBestStreak;
+  $('go-mult').textContent = 'x' + multiplier;
+  $('go-rank-line').textContent = rank <= 5 ? 'You ranked #' + rank + ' on the board!' : '';
+  gs.leaderboard = gs.leaderboard.map(e => ({ ...e, score: e.score + Math.floor(Math.random()*6-2) }));
+  saveData();
+  $('gameover').classList.add('show');
+}
+
+function startGame() {
+  score = 0; streak = 0; sessionBestStreak = 0; multiplier = 1; timeLeft = GAME_DUR;
+  gameRunning = false;
+  clearTimeout(switchTimer); clearInterval(gameTimer);
+  setDanger(false);
+  updateMultiplier();
+  renderLeaderboard();
+  renderHUD();
+  $('gameover').classList.remove('show');
+
+  const cdEl = $('countdown-overlay');
+  cdEl.classList.add('show');
+  let cd = 3;
+  cdEl.textContent = cd;
+  const cdInt = setInterval(() => {
+    cd--;
+    if (cd > 0) { cdEl.textContent = cd; }
+    else {
+      clearInterval(cdInt);
+      cdEl.classList.remove('show');
+      gameRunning = true;
+      scheduleSwitch();
+      gameTimer = setInterval(() => {
+        timeLeft--;
+        $('level-label').textContent = 'LVL · ' + timeLeft + 's';
+        if (timeLeft <= 0) endGame();
+      }, 1000);
+    }
+  }, 900);
+}
+
+function showPanel(p) {
+  $('stats-panel').classList.remove('open');
+  $('missions-panel').classList.remove('open');
+  ['home','stats','shop','missions'].forEach(id => {
+    const nav = $('nav-' + id);
+    if (nav) nav.classList.remove('active');
+  });
+  const homeNav = $('nav-home');
+  if (p === 'stats') {
+    renderStats();
+    $('stats-panel').classList.add('open');
+    $('nav-stats').classList.add('active');
+  } else if (p === 'missions') {
+    renderMissions();
+    $('missions-panel').classList.add('open');
+    $('nav-missions').classList.add('active');
+  } else {
+    if (homeNav) homeNav.classList.add('active');
+  }
+}
+
+// Stars
+function makeStars() {
+  const c = $('stars');
+  for (let i = 0; i < 60; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const sz = Math.random() * 1.5 + 0.5;
+    s.style.cssText = `width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*60}%;animation-delay:${Math.random()*3}s;animation-duration:${2+Math.random()*2}s;`;
+    c.appendChild(s);
+  }
+}
+
+// Badge restore
+function restoreBadges() {
+  badgesEarned.forEach(id => {
+    const el = $('badge-' + id);
+    if (el) el.classList.add('earned');
+  });
+}
+
+tapBtn.addEventListener('touchstart', handleTap, { passive: false });
+tapBtn.addEventListener('mousedown', handleTap);
+$('start-btn').addEventListener('click', () => { $('start-overlay').style.display='none'; startGame(); });
+$('play-again').addEventListener('click', startGame);
+
+makeStars();
+restoreBadges();
+renderHUD();
+renderLeaderboard();
+
+// ── SOUND ENGINE (Web Audio API) ──────────────────────────────────────────────
+let _actx = null;
+function actx() {
+  if (!_actx) _actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (_actx.state === 'suspended') _actx.resume();
+  return _actx;
+}
+
+function playTone(freq, type, duration, vol, attack, decay, detune) {
+  try {
+    const ctx = actx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = type || 'sine';
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    if (detune) osc.detune.setValueAtTime(detune, ctx.currentTime);
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(vol || 0.3, ctx.currentTime + (attack || 0.005));
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + (duration || 0.15));
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + (duration || 0.15) + (decay || 0));
+  } catch(e) {}
+}
+
+function playNoise(duration, vol, highpass) {
+  try {
+    const ctx = actx();
+    const bufSize = ctx.sampleRate * duration;
+    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.value = highpass || 1000;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(vol || 0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    src.start();
+    src.stop(ctx.currentTime + duration);
+  } catch(e) {}
+}
+
+const SFX = {
+  tap() {
+    playTone(880, 'sine', 0.08, 0.18, 0.003);
+    playTone(1320, 'sine', 0.06, 0.08, 0.003);
+  },
+  tapMulti(mult) {
+    const base = 600 + mult * 120;
+    playTone(base, 'triangle', 0.10, 0.22, 0.003);
+    playTone(base * 1.5, 'sine', 0.07, 0.10, 0.005);
+  },
+  danger() {
+    playTone(220, 'sawtooth', 0.18, 0.25, 0.01, 0.05);
+    setTimeout(() => playTone(180, 'sawtooth', 0.14, 0.20, 0.01, 0.05), 120);
+  },
+  penalty() {
+    playTone(160, 'sawtooth', 0.22, 0.30, 0.005, 0.08);
+    playNoise(0.12, 0.10, 200);
+  },
+  safeReturn() {
+    playTone(660, 'sine', 0.10, 0.18, 0.005);
+    setTimeout(() => playTone(880, 'sine', 0.08, 0.14, 0.005), 80);
+  },
+  streak(n) {
+    const notes = [523, 659, 784, 1047, 1319];
+    const idx = Math.min(Math.floor(n / 5) - 1, notes.length - 1);
+    playTone(notes[idx], 'sine', 0.18, 0.28, 0.005);
+    setTimeout(() => playTone(notes[idx] * 1.25, 'sine', 0.12, 0.18, 0.005), 100);
+  },
+  levelUp() {
+    [523, 659, 784, 1047].forEach((f, i) =>
+      setTimeout(() => playTone(f, 'sine', 0.18, 0.28, 0.005), i * 90));
+  },
+  badge() {
+    playTone(1047, 'sine', 0.14, 0.22, 0.005);
+    setTimeout(() => playTone(1319, 'sine', 0.12, 0.18, 0.005), 90);
+  },
+  countdown() {
+    playTone(440, 'sine', 0.12, 0.20, 0.005);
+  },
+  go() {
+    [523, 659, 784, 1047, 1319].forEach((f, i) =>
+      setTimeout(() => playTone(f, 'triangle', 0.14, 0.25, 0.005), i * 70));
+  },
+  gameOver() {
+    [400, 330, 260, 200].forEach((f, i) =>
+      setTimeout(() => playTone(f, 'sawtooth', 0.18, 0.22, 0.01, 0.05), i * 120));
+  },
+};
+
+// Wire sounds directly via event flags (no function redeclaration)
+tapBtn.addEventListener('touchstart', _sfxTapHandler, { passive: false });
+tapBtn.addEventListener('mousedown', _sfxTapHandler);
+
+function _sfxTapHandler(e) {
+  if (!gameRunning) return;
+  if (btnDanger) {
+    SFX.penalty();
+  } else {
+    const m = multiplier;
+    if (m > 1) SFX.tapMulti(m);
+    else SFX.tap();
+  }
+}
+
+// Streak / level-up sounds: check after each tap inside handleTap
+// We hook via a wrapper on the tap event that runs AFTER handleTap
+tapBtn.addEventListener('touchstart', _sfxPostTap, { passive: false });
+tapBtn.addEventListener('mousedown', _sfxPostTap);
+
+let _prevStreak = 0, _prevLevel = 1;
+function _sfxPreCapture() { _prevStreak = streak; _prevLevel = gs.level; }
+function _sfxPostTap() {
+  if (!gameRunning || btnDanger) return;
+  setTimeout(() => {
+    if (streak > _prevStreak && STREAK_THRESHOLDS.includes(streak)) SFX.streak(streak);
+    if (gs.level > _prevLevel) SFX.levelUp();
+  }, 0);
+}
+tapBtn.addEventListener('touchstart', _sfxPreCapture, { passive: false, capture: true });
+tapBtn.addEventListener('mousedown', _sfxPreCapture, { capture: true });
+
+// Badge sound
+const _origEarnBadgeFn = earnBadge;
+window._sfxBadgeNext = false;
+const _realEarnBadge = (id, label) => {
+  const wasEarned = badgesEarned.has(id);
+  _origEarnBadgeFn(id, label);
+  if (!wasEarned && badgesEarned.has(id)) SFX.badge();
+};
+window.earnBadge = _realEarnBadge;
+
+// setDanger sounds
+const _origSetDangerFn = setDanger;
+window.setDanger = (on) => {
+  _origSetDangerFn(on);
+  if (on) SFX.danger();
+  else if (gameRunning) SFX.safeReturn();
+};
+
+// startGame countdown sounds — use a MutationObserver on the countdown el
+const _cdEl = $('countdown-overlay');
+let _cdObserver = null;
+function _hookCountdownSounds() {
+  if (_cdObserver) _cdObserver.disconnect();
+  _cdObserver = new MutationObserver(() => {
+    const txt = _cdEl.textContent.trim();
+    if (txt === '3' || txt === '2' || txt === '1') SFX.countdown();
+    else if (_cdEl.classList.contains('show') === false && txt === '') SFX.go();
+  });
+  _cdObserver.observe(_cdEl, { characterData: true, childList: true, attributes: true, attributeFilter: ['class'] });
+}
+_hookCountdownSounds();
+
+// endGame sound — poll for gameover screen becoming visible
+const _goEl = $('gameover');
+let _goObserver = null;
+function _hookGameOverSound() {
+  if (_goObserver) _goObserver.disconnect();
+  _goObserver = new MutationObserver(() => {
+    if (_goEl.classList.contains('show')) SFX.gameOver();
+  });
+  _goObserver.observe(_goEl, { attributes: true, attributeFilter: ['class'] });
+}
+_hookGameOverSound();
+</script>
+</body>
+</html>
