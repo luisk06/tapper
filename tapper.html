@@ -565,6 +565,7 @@
   <div id="badges-section">
     <span class="badge" id="badge-first">1st Tap</span>
     <span class="badge" id="badge-s5">Streak 5</span>
+    <span class="badge" id="badge-s10">Streak 10</span>
     <span class="badge" id="badge-s15">Streak 15</span>
     <span class="badge" id="badge-s30">Streak 30</span>
     <span class="badge" id="badge-100">100 pts</span>
@@ -800,17 +801,18 @@ function earnBadge(id, label) {
 }
 
 function checkBadges() {
-  if (gs.totalTaps >= 1) earnBadge('first', '1st Tap');
-  if (streak >= 5)  earnBadge('s5', 'Streak 5');
-  if (streak >= 15) earnBadge('s15', 'Streak 15');
-  if (streak >= 30) earnBadge('s30', 'Streak 30');
-  if (score >= 100) earnBadge('100', '100 pts');
-  if (score >= 500) earnBadge('500', '500 pts');
-  if (Date.now() - lastTapTime < 280 && streak > 1) earnBadge('reflex', 'Reflex');
+  if (gs.totalTaps >= 1)  earnBadge('first', '1st Tap');
+  if (streak >= 5)        earnBadge('s5',  'Streak 5');
+  if (streak >= 10)       earnBadge('s10', 'Streak 10');
+  if (streak >= 15)       earnBadge('s15', 'Streak 15');
+  if (streak >= 30)       earnBadge('s30', 'Streak 30');
+  if (score >= 100)       earnBadge('100', '100 pts');
+  if (score >= 500)       earnBadge('500', '500 pts');
 }
 
 function renderLeaderboard() {
-  const you = { name: 'You', score, you: true };
+  const yourDisplayScore = Math.max(score, gs.bestScore);
+  const you = { name: 'You', score: yourDisplayScore, you: true };
   const combined = [...gs.leaderboard, you].sort((a,b) => b.score - a.score).slice(0,5);
   $('lb-rows').innerHTML = combined.map((e,i) => `
     <div class="lb-row ${e.you?'you':''}">
@@ -923,18 +925,18 @@ function handleTap(e) {
     addXP(pts);
     updateMultiplier();
     showFloat('+' + pts, false, false);
-    if (streak === 5)  flashCombo('STREAK x2!');
-    if (streak === 10) flashCombo('STREAK x3! ');
-    if (streak === 15) flashCombo('x4 ON FIRE!');
-    if (streak === 20) flashCombo('UNSTOPPABLE x5!');
-    if (streak === 30) flashCombo('LEGEND x6!!!');
+    if      (streak === 5)  flashCombo('STREAK x2!');
+    else if (streak === 10) flashCombo('STREAK x3!');
+    else if (streak === 15) flashCombo('x4 ON FIRE!');
+    else if (streak === 20) flashCombo('UNSTOPPABLE x5!');
+    else if (streak === 30) flashCombo('LEGEND x6!!!');
     else if (streak > 5 && streak % 5 === 0) flashCombo(streak + ' in a row!');
     tapBtn.classList.add('bounce');
     setTimeout(() => tapBtn.classList.remove('bounce'), 150);
     totalTapsEl.textContent = gs.totalTaps.toLocaleString();
     totalTapsEl.classList.add('pop');
     setTimeout(() => totalTapsEl.classList.remove('pop'), 80);
-    if (now - lastTapTime < 280) earnBadge('reflex', 'Reflex');
+    if (lastTapTime > 0 && now - lastTapTime < 280) earnBadge('reflex', 'Reflex');
     lastTapTime = now;
     checkBadges();
     updateMissions();
@@ -949,13 +951,22 @@ function endGame() {
   clearInterval(gameTimer);
   gs.gamesPlayed++;
   earnBadge('survivor', 'Survivor');
-  const combined = [...gs.leaderboard, {name:'You', score}].sort((a,b)=>b.score-a.score);
+
+  if (score > gs.bestScore) gs.bestScore = score;
+
+  const yourBest = gs.bestScore;
+  const combined = [...gs.leaderboard, {name:'You', score: yourBest}].sort((a,b)=>b.score-a.score);
   const rank = combined.findIndex(e=>e.name==='You') + 1;
   $('go-score').textContent = Math.round(score).toLocaleString();
   $('go-str').textContent = sessionBestStreak;
   $('go-mult').textContent = 'x' + multiplier;
   $('go-rank-line').textContent = rank <= 5 ? 'You ranked #' + rank + ' on the board!' : '';
-  gs.leaderboard = gs.leaderboard.map(e => ({ ...e, score: e.score + Math.floor(Math.random()*6-2) }));
+
+  gs.leaderboard = gs.leaderboard.map(e => ({
+    ...e,
+    score: Math.round(e.score + (Math.random() * 4 - 2))
+  }));
+
   saveData();
   $('gameover').classList.add('show');
 }
