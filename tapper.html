@@ -650,7 +650,7 @@
   <div id="start-overlay">
     <h1>TAPPER</h1>
     <ul class="rules-list">
-      <li>Tap GREEN to earn points</li>
+      <li>Tap BLUE to earn points</li>
       <li>Avoid RED — it costs you</li>
       <li>Build streaks for multipliers</li>
       <li>Survive 60 seconds</li>
@@ -872,7 +872,7 @@ function setDanger(on) {
     tapBtn.className = 'danger';
     $('btn-main-lbl').textContent = 'STOP!';
     $('btn-sub-lbl').textContent = 'DON\'T TAP NOW';
-    instruction.textContent = 'WAIT FOR GREEN!';
+    instruction.textContent = 'WAIT FOR BLUE!';
     instruction.classList.add('danger-msg');
     [ring1,ring2,ring3].forEach(r => { r.classList.add('ring-danger'); r.style.animationName = 'ringDanger'; });
   } else {
